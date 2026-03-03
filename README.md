@@ -5,3 +5,34 @@ curl -O https://raw.githubusercontent.com/dxrom1/Setup/refs/heads/main/termux-li
 ```
 
 original https://github.com/orailnoor/termux-linux-setup
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+trying to install if it can
