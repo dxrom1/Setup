@@ -26,7 +26,7 @@ print_banner() {
 ╚══════════════════════════════════════════════════════════╝
 EOF
     echo -e "${RESET}"
-    echo -e "${BOLD}Date:$(date '+%Y-%m-%d %H:%M')${RESET}\n"
+    echo -e "${BOLD}Date: $(date '+%Y-%m-%d %H:%M')${RESET}\n"
 }
 
 print_status() {
@@ -45,7 +45,7 @@ print_error() {
     echo -e "${RED}[✗]${RESET} $1"
 }
 
-# Spinner for background processes
+# Spinner for background processes (used only for non-critical long ops)
 spinner() {
     local pid=$1
     local delay=0.1
@@ -102,6 +102,12 @@ if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
 fi
 print_success "Internet connected."
 
+# Optional: check available storage (at least 2GB free)
+available=$(df /data | awk 'NR==2 {print $4}')
+if [ "$available" -lt 2000000 ]; then
+    print_warning "Less than 2GB free storage. Installation may fail."
+fi
+
 # ------------------------------
 # 2. Update Termux and install prerequisites
 # ------------------------------
@@ -130,12 +136,18 @@ else
     download_with_retry "https://offs.ec/2MceZWr" "install-nethunter-termux"
     chmod +x install-nethunter-termux
 
-    print_status "Running NetHunter installer (this will take 5-10 minutes)..."
-    ./install-nethunter-termux > /dev/null 2>&1 &
-    spinner $!
+    print_warning "Running NetHunter installer in foreground (to show progress/errors)..."
+    print_warning "If it asks for permissions, grant them."
+    # Run without redirection so user sees any errors
+    if ! ./install-nethunter-termux; then
+        print_error "NetHunter installer failed. Please check the output above."
+        print_error "Common issues: insufficient storage, network problems, or missing dependencies."
+        exit 1
+    fi
 
+    # Verify installation succeeded
     if ! command -v nethunter &>/dev/null; then
-        print_error "NetHunter installation failed. Please check manually."
+        print_error "NetHunter installation completed but 'nethunter' command not found."
         exit 1
     fi
     print_success "Kali NetHunter installed."
