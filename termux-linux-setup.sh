@@ -2,8 +2,8 @@
 ##########################################################
 #  🎨 ULTIMATE TERMUX DESKTOP INSTALLER
 #  ------------------------------------------------------
-#  Installs: Firefox | Chromium | Brave | VS Code |
-#            Spotify (spotify-qt) | Discord (WebCord) |
+#  Installs: Firefox | Chromium | VS Code | Discord |
+#            GIMP | VLC | Git | Node.js | Syncthing |
 #            LibreOffice (PowerPoint support)
 #
 #  With GPU acceleration, audio, and beautiful UI
@@ -12,7 +12,7 @@
 # ============== CONFIG ==============
 TOTAL_STEPS=14
 CURRENT_STEP=0
-REQUIRED_SPACE_MB=2500  # Approx 2.5GB free space recommended
+REQUIRED_SPACE_MB=3000  # Approx 3GB free space recommended (more apps)
 
 # ============== COLORS ==============
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -26,10 +26,11 @@ print_banner() {
     echo -e "${CYAN}"
     cat << "EOF"
     ╔══════════════════════════════════════════════════════╗
-    ║     🚀  TERMUX DESKTOP INSTALLER  v3.0  🚀          ║
+    ║     🚀  TERMUX DESKTOP INSTALLER  v4.0  🚀          ║
     ║                                                      ║
-    ║   🔥 Firefox   ●   🌐 Chromium   ●   🦁 Brave       ║
-    ║   💻 VS Code   ●   🎵 Spotify    ●   💬 Discord     ║
+    ║   🔥 Firefox   ●   🌐 Chromium   ●   💻 VS Code     ║
+    ║   🎨 GIMP      ●   📺 VLC        ●   💬 Discord     ║
+    ║   🔧 Git       ●   🟢 Node.js    ●   🔄 Syncthing   ║
     ║   📊 LibreOffice (PowerPoint support)               ║
     ╚══════════════════════════════════════════════════════╝
 EOF
@@ -177,7 +178,6 @@ step_browsers() {
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing web browsers...${NC}\n"
     install_pkg "firefox" "Firefox"
     install_pkg "chromium" "Chromium"
-    install_pkg "brave-browser" "Brave Browser"
 }
 
 step_vscode() {
@@ -186,11 +186,19 @@ step_vscode() {
     install_pkg "code-oss" "VS Code (Open Source)"
 }
 
-step_spotify() {
+step_multimedia() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing Spotify client...${NC}\n"
-    install_pkg "spotify-qt" "Spotify-qt (Graphical)"
-    install_pkg "ncspt" "ncspt (Terminal client)"
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing multimedia tools (GIMP, VLC)...${NC}\n"
+    install_pkg "gimp" "GIMP Image Editor"
+    install_pkg "vlc" "VLC Media Player"
+}
+
+step_devtools() {
+    update_progress
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing development tools...${NC}\n"
+    install_pkg "git" "Git"
+    install_pkg "nodejs" "Node.js"
+    install_pkg "syncthing" "Syncthing"
 }
 
 step_discord() {
@@ -303,17 +311,6 @@ Type=Application
 Categories=Network;
 CHROMIUM
 
-    # Brave
-    cat > ~/Desktop/Brave.desktop << 'BRAVE'
-[Desktop Entry]
-Name=Brave
-Comment=Web Browser
-Exec=brave-browser
-Icon=brave-browser
-Type=Application
-Categories=Network;
-BRAVE
-
     # VS Code
     cat > ~/Desktop/VSCode.desktop << 'VSCODE'
 [Desktop Entry]
@@ -325,16 +322,27 @@ Type=Application
 Categories=Development;
 VSCODE
 
-    # Spotify
-    cat > ~/Desktop/Spotify.desktop << 'SPOTIFY'
+    # GIMP
+    cat > ~/Desktop/GIMP.desktop << 'GIMP'
 [Desktop Entry]
-Name=Spotify
-Comment=Music Streaming
-Exec=spotify-qt
-Icon=spotify-qt
+Name=GIMP
+Comment=Image Editor
+Exec=gimp
+Icon=gimp
 Type=Application
-Categories=Audio;
-SPOTIFY
+Categories=Graphics;
+GIMP
+
+    # VLC
+    cat > ~/Desktop/VLC.desktop << 'VLC'
+[Desktop Entry]
+Name=VLC
+Comment=Media Player
+Exec=vlc
+Icon=vlc
+Type=Application
+Categories=AudioVideo;
+VLC
 
     # Discord
     if command -v webcord >/dev/null 2>&1; then
@@ -357,6 +365,21 @@ Icon=discord
 Type=Application
 Categories=Network;
 DISCORD
+    fi
+
+    # Git (terminal launcher, maybe not needed)
+    # Node.js (terminal)
+    # Syncthing GUI (if available)
+    if command -v syncthing >/dev/null 2>&1; then
+        cat > ~/Desktop/Syncthing.desktop << 'SYNC'
+[Desktop Entry]
+Name=Syncthing
+Comment=File Sync
+Exec=syncthing-gui
+Icon=syncthing
+Type=Application
+Categories=Network;
+SYNC
     fi
 
     # LibreOffice
@@ -397,10 +420,13 @@ show_summary() {
     echo -e "${WHITE}📦 Installed applications:${NC}"
     echo -e "  ${CYAN}•${NC} Firefox         ${GREEN}✓${NC}"
     echo -e "  ${CYAN}•${NC} Chromium        ${GREEN}✓${NC}"
-    echo -e "  ${CYAN}•${NC} Brave Browser   ${GREEN}✓${NC}"
     echo -e "  ${CYAN}•${NC} VS Code         ${GREEN}✓${NC}"
-    echo -e "  ${CYAN}•${NC} Spotify (qt)    ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} GIMP            ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} VLC             ${GREEN}✓${NC}"
     echo -e "  ${CYAN}•${NC} Discord         ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} Git             ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} Node.js         ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} Syncthing       ${GREEN}✓${NC}"
     if command -v libreoffice >/dev/null 2>&1; then
         echo -e "  ${CYAN}•${NC} LibreOffice     ${GREEN}✓${NC} (PowerPoint support)"
     else
@@ -435,7 +461,8 @@ main() {
     step_audio
     step_browsers
     step_vscode
-    step_spotify
+    step_multimedia
+    step_devtools
     step_discord
     step_libreoffice
     step_launchers
