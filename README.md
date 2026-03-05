@@ -6,7 +6,8 @@ curl -sL https://raw.githubusercontent.com/dxrom1/Setup/refs/heads/main/termux-l
 
 
 
-Android Version: Works best on Android 8+.
+Android Version: Works best on Android 8+
+
 Hardware: At least 3GB RAM and 3-4GB free storage recommended.
 Internet data usage: 1.5-2GB for downloads.
 
