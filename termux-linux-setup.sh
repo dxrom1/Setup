@@ -1,18 +1,17 @@
 #!/data/data/com.termux/files/usr/bin/bash
 ##########################################################
-#  🎨 ULTIMATE TERMUX DESKTOP INSTALLER (MODIFIED)
+#  🎨 ULTIMATE TERMUX DESKTOP INSTALLER
 #  ------------------------------------------------------
-#  Installs: Firefox | Chromium | VS Code | Discord |
-#            Inkscape | GTKcord4 | VLC | Git | Node.js |
-#            Syncthing | LibreOffice (if available)
+#  Installs: Firefox | Chromium | VS Code | Blender |
+#            LibreOffice (PowerPoint) | Extra coding tools
 #
 #  With GPU acceleration, audio, and beautiful UI
 ##########################################################
 
 # ============== CONFIG ==============
-TOTAL_STEPS=15
+TOTAL_STEPS=14
 CURRENT_STEP=0
-REQUIRED_SPACE_MB=3000  # Slightly higher due to new apps
+REQUIRED_SPACE_MB=3500  # Blender + tools need more space
 
 # ============== COLORS ==============
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -25,14 +24,13 @@ print_banner() {
     clear
     echo -e "${CYAN}"
     cat << "EOF"
-    ╔════════════════════════════════════════════════════════╗
-    ║     🚀  TERMUX DESKTOP INSTALLER  v4.0  🚀            ║
-    ║                                                        ║
-    ║   🔥 Firefox  ●  🌐 Chromium  ●  💻 VS Code           ║
-    ║   💬 Discord  ●  ✏️ Inkscape  ●  🎧 GTKcord4          ║
-    ║   📺 VLC      ●  🌿 Git       ●  🟩 Node.js           ║
-    ║   🔄 Syncthing ●  📊 LibreOffice (if available)       ║
-    ╚════════════════════════════════════════════════════════╝
+    ╔══════════════════════════════════════════════════════╗
+    ║     🚀  TERMUX DEV + CREATOR INSTALLER  🚀          ║
+    ║                                                      ║
+    ║   🔥 Firefox   ●   🌐 Chromium   ●   💻 VS Code     ║
+    ║   🎨 Blender   ●   📊 LibreOffice (PowerPoint)      ║
+    ║   🛠️  GCC · Clang · Python · Node · Rust · more     ║
+    ╚══════════════════════════════════════════════════════╝
 EOF
     echo -e "${NC}"
 }
@@ -178,7 +176,6 @@ step_browsers() {
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing web browsers...${NC}\n"
     install_pkg "firefox" "Firefox"
     install_pkg "chromium" "Chromium"
-    # Brave removed per user request
 }
 
 step_vscode() {
@@ -187,15 +184,52 @@ step_vscode() {
     install_pkg "code-oss" "VS Code (Open Source)"
 }
 
-step_discord() {
+step_blender() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing Discord client...${NC}\n"
-    if pkg show discord >/dev/null 2>&1; then
-        install_pkg "discord" "Discord"
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing Blender 3D...${NC}\n"
+    if pkg show blender >/dev/null 2>&1; then
+        install_pkg "blender" "Blender"
+        echo -e "  ${GREEN}✓ Blender installed. Note: 3D rendering may be slow on some devices.${NC}"
     else
-        echo -e "  ${YELLOW}ℹ️ Official Discord not found, installing GTKcord4...${NC}"
-        install_pkg "gtkcord4" "GTKcord4 (Discord alternative)"
+        echo -e "  ${YELLOW}⚠️ Blender is not available in Termux repositories.${NC}"
+        echo -e "  ${WHITE}You can try building from source or use an alternative like https://blender.org.${NC}"
     fi
+}
+
+step_dev_tools() {
+    update_progress
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing extra development tools...${NC}\n"
+    
+    # Compilers & build tools
+    install_pkg "gcc" "GCC"
+    install_pkg "clang" "Clang"
+    install_pkg "make" "Make"
+    install_pkg "cmake" "CMake"
+    install_pkg "pkg-config" "pkg-config"
+    
+    # Languages & runtimes
+    install_pkg "python" "Python"
+    install_pkg "nodejs" "Node.js"
+    install_pkg "rust" "Rust"
+    
+    # Debuggers & analyzers
+    install_pkg "gdb" "GDB"
+    install_pkg "valgrind" "Valgrind"
+    install_pkg "strace" "strace"
+    
+    # Editors & utilities
+    install_pkg "vim" "Vim"
+    install_pkg "nano" "Nano"
+    install_pkg "git" "Git"
+    install_pkg "curl" "cURL"
+    install_pkg "wget" "Wget"
+    install_pkg "htop" "htop"
+    install_pkg "neofetch" "Neofetch"
+    
+    # Version control extras
+    install_pkg "subversion" "Subversion"
+    
+    echo -e "  ${GREEN}✓ Development tools installed${NC}"
 }
 
 step_libreoffice() {
@@ -208,16 +242,6 @@ step_libreoffice() {
         echo -e "  ${YELLOW}⚠️ LibreOffice not available in repositories.${NC}"
         echo -e "  ${WHITE}You can still use web-based PowerPoint via browser.${NC}"
     fi
-}
-
-step_extra_apps() {
-    update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing extra applications (Inkscape, VLC, Git, Node.js, Syncthing)...${NC}\n"
-    install_pkg "inkscape" "Inkscape (Vector Graphics)"
-    install_pkg "vlc" "VLC Media Player"
-    install_pkg "git" "Git Version Control"
-    install_pkg "nodejs" "Node.js"
-    install_pkg "syncthing" "Syncthing (File Sync)"
 }
 
 step_launchers() {
@@ -318,66 +342,17 @@ Type=Application
 Categories=Development;
 VSCODE
 
-    # Discord (GTKcord4 or Discord)
-    if command -v gtkcord4 >/dev/null 2>&1; then
-        cat > ~/Desktop/Discord.desktop << 'DISCORD'
+    # Blender (if installed)
+    if command -v blender >/dev/null 2>&1; then
+        cat > ~/Desktop/Blender.desktop << 'BLENDER'
 [Desktop Entry]
-Name=Discord (GTKcord4)
-Comment=Chat
-Exec=gtkcord4
-Icon=gtkcord4
-Type=Application
-Categories=Network;
-DISCORD
-    elif command -v discord >/dev/null 2>&1; then
-        cat > ~/Desktop/Discord.desktop << 'DISCORD'
-[Desktop Entry]
-Name=Discord
-Comment=Chat
-Exec=discord
-Icon=discord
-Type=Application
-Categories=Network;
-DISCORD
-    fi
-
-    # Inkscape
-    if command -v inkscape >/dev/null 2>&1; then
-        cat > ~/Desktop/Inkscape.desktop << 'INKSCAPE'
-[Desktop Entry]
-Name=Inkscape
-Comment=Vector Graphics Editor
-Exec=inkscape
-Icon=inkscape
+Name=Blender
+Comment=3D Creation Suite
+Exec=blender
+Icon=blender
 Type=Application
 Categories=Graphics;
-INKSCAPE
-    fi
-
-    # VLC
-    if command -v vlc >/dev/null 2>&1; then
-        cat > ~/Desktop/VLC.desktop << 'VLC'
-[Desktop Entry]
-Name=VLC
-Comment=Media Player
-Exec=vlc
-Icon=vlc
-Type=Application
-Categories=AudioVideo;
-VLC
-    fi
-
-    # Syncthing (Web UI shortcut)
-    if command -v syncthing >/dev/null 2>&1; then
-        cat > ~/Desktop/Syncthing.desktop << 'SYNCTHING'
-[Desktop Entry]
-Name=Syncthing (Web UI)
-Comment=File Synchronization
-Exec=xfce4-terminal -e 'bash -c "echo Opening Syncthing Web UI at http://localhost:8384; sleep 3"'
-Icon=network-workgroup
-Type=Application
-Categories=Network;
-SYNCTHING
+BLENDER
     fi
 
     # LibreOffice (if installed)
@@ -404,6 +379,17 @@ Type=Application
 Categories=System;
 TERM
 
+    # File Manager
+    cat > ~/Desktop/FileManager.desktop << 'FM'
+[Desktop Entry]
+Name=File Manager
+Comment=Thunar File Manager
+Exec=thunar
+Icon=thunar
+Type=Application
+Categories=System;
+FM
+
     chmod +x ~/Desktop/*.desktop 2>/dev/null
     echo -e "  ${GREEN}✓${NC} Shortcuts created"
 }
@@ -419,24 +405,24 @@ show_summary() {
     echo -e "  ${CYAN}•${NC} Firefox         ${GREEN}✓${NC}"
     echo -e "  ${CYAN}•${NC} Chromium        ${GREEN}✓${NC}"
     echo -e "  ${CYAN}•${NC} VS Code         ${GREEN}✓${NC}"
-    echo -e "  ${CYAN}•${NC} Discord/GTKcord4 ${GREEN}✓${NC}"
-    echo -e "  ${CYAN}•${NC} Inkscape        ${GREEN}✓${NC} (if available)"
-    echo -e "  ${CYAN}•${NC} VLC             ${GREEN}✓${NC} (if available)"
-    echo -e "  ${CYAN}•${NC} Git             ${GREEN}✓${NC} (if available)"
-    echo -e "  ${CYAN}•${NC} Node.js         ${GREEN}✓${NC} (if available)"
-    echo -e "  ${CYAN}•${NC} Syncthing       ${GREEN}✓${NC} (if available)"
+    if command -v blender >/dev/null 2>&1; then
+        echo -e "  ${CYAN}•${NC} Blender         ${GREEN}✓${NC}"
+    else
+        echo -e "  ${CYAN}•${NC} Blender         ${YELLOW}not installed (not in repo)${NC}"
+    fi
     if command -v libreoffice >/dev/null 2>&1; then
         echo -e "  ${CYAN}•${NC} LibreOffice     ${GREEN}✓${NC} (PowerPoint support)"
+    else
+        echo -e "  ${CYAN}•${NC} LibreOffice     ${YELLOW}not installed (optional)${NC}"
     fi
+    echo -e "  ${CYAN}•${NC} Development tools (GCC, Clang, Python, Node, Rust, ...) ${GREEN}✓${NC}"
     echo ""
     echo -e "${WHITE}🚀 Commands:${NC}"
     echo -e "  ${GREEN}bash ~/start-desktop.sh${NC}  - Start XFCE desktop"
     echo -e "  ${GREEN}bash ~/stop-desktop.sh${NC}   - Stop desktop"
     echo ""
-    echo -e "${YELLOW}Notes:${NC}"
-    echo -e "  • For PowerPoint, use LibreOffice Impress or Microsoft 365 online."
-    echo -e "  • Syncthing web UI: http://localhost:8384 (after starting syncthing)."
-    echo -e "  • Git and Node.js are command-line tools – use Terminal."
+    echo -e "${YELLOW}Note:${NC} For PowerPoint, use LibreOffice Impress or"
+    echo -e "      Microsoft 365 online in any browser."
     echo ""
 }
 
@@ -444,7 +430,7 @@ show_summary() {
 main() {
     print_banner
     echo -e "${WHITE}This script will install a full Linux desktop with the apps above.${NC}"
-    echo -e "${GRAY}Estimated time: 15-25 minutes (depends on internet).${NC}\n"
+    echo -e "${GRAY}Estimated time: 20-30 minutes (depends on internet).${NC}\n"
     check_storage
     echo ""
     echo -e "${YELLOW}Press ENTER to start or Ctrl+C to cancel...${NC}"
@@ -459,9 +445,9 @@ main() {
     step_audio
     step_browsers
     step_vscode
-    step_discord
+    step_blender
+    step_dev_tools
     step_libreoffice
-    step_extra_apps
     step_launchers
     step_shortcuts
 
