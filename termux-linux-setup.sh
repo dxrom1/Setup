@@ -1,15 +1,15 @@
 #!/data/data/com.termux/files/usr/bin/bash
 ##########################################################
-# 🎨 TERMUX DESKTOP INSTALLER (Compatibility Edition)
+# 🚀 TERMUX DESKTOP INSTALLER (Light + Screen Share)
 # ------------------------------------------------------
-# Installs: Firefox, VLC, XFCE4, and essential dev tools
-# Uses software rendering (LLVMpipe) for broad device support
+# Installs: Firefox, XFCE4, PulseAudio, and minimal tools
+# Includes configuration for Discord screen sharing
 ##########################################################
 
 # ============== CONFIG ==============
 TOTAL_STEPS=12
 CURRENT_STEP=0
-REQUIRED_SPACE_MB=1800
+REQUIRED_SPACE_MB=1500
 
 # ============== COLORS ==============
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -23,10 +23,10 @@ print_banner() {
     echo -e "${CYAN}"
     cat << "EOF"
 ╔══════════════════════════════════════════════════════╗
-║   🚀 TERMUX DESKTOP INSTALLER (Compatible) 🚀        ║
+║   🚀 TERMUX DESKTOP (Light + Screen Share) 🚀        ║
 ║                                                      ║
-║   🔥 Firefox  •  🎬 VLC  •  🛠️ Dev Tools            ║
-║   🖥️ XFCE4 Desktop  •  🎵 PulseAudio                ║
+║   🔥 Firefox  •  🖥️ XFCE4  •  🎵 PulseAudio         ║
+║   📸 Discord screen sharing ready                    ║
 ╚══════════════════════════════════════════════════════╝
 EOF
     echo -e "${NC}"
@@ -125,7 +125,6 @@ step_desktop() {
 step_gpu() {
     update_progress
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Configuring software rendering (LLVMpipe)...${NC}\n"
-    # Install Mesa for software rendering
     install_pkg "mesa" "Mesa (LLVMpipe)"
     install_pkg "mesa-utils" "Mesa utilities"
     echo -e " ${GREEN}✓${NC} Software rendering configured (compatible with all devices)"
@@ -137,50 +136,37 @@ step_audio() {
     install_pkg "pulseaudio" "PulseAudio"
 }
 
+step_screen_share() {
+    update_progress
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing screen sharing support...${NC}\n"
+    # Install xdg-desktop-portal for screen capture in Firefox
+    install_pkg "xdg-desktop-portal-termux" "XDG Desktop Portal (Termux)"
+    install_pkg "xdg-desktop-portal-gtk" "XDG Desktop Portal (GTK)"
+    echo -e " ${GREEN}✓${NC} Screen sharing dependencies installed"
+}
+
 step_browser() {
     update_progress
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing Firefox web browser...${NC}\n"
     install_pkg "firefox" "Firefox"
 }
 
-step_media() {
+step_essentials() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing VLC media player...${NC}\n"
-    install_pkg "vlc" "VLC Media Player"
-}
-
-step_dev_tools() {
-    update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing development tools...${NC}\n"
-    # Compilers & build tools
-    install_pkg "gcc" "GCC"
-    install_pkg "clang" "Clang"
-    install_pkg "make" "Make"
-    install_pkg "cmake" "CMake"
-    install_pkg "pkg-config" "pkg-config"
-    # Languages & runtimes
-    install_pkg "python" "Python"
-    install_pkg "nodejs" "Node.js"
-    install_pkg "rust" "Rust"
-    # Debuggers & analyzers
-    install_pkg "gdb" "GDB"
-    install_pkg "valgrind" "Valgrind"
-    install_pkg "strace" "strace"
-    # Editors & utilities
-    install_pkg "vim" "Vim"
-    install_pkg "nano" "Nano"
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing essential utilities...${NC}\n"
     install_pkg "git" "Git"
     install_pkg "curl" "cURL"
     install_pkg "wget" "Wget"
     install_pkg "htop" "htop"
     install_pkg "neofetch" "Neofetch"
-    echo -e " ${GREEN}✓ Development tools installed${NC}"
+    echo -e " ${GREEN}✓ Essentials installed${NC}"
 }
 
 step_launchers() {
     update_progress
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Creating launcher scripts...${NC}\n"
     mkdir -p ~/.config
+
     # GPU config: use software rendering
     cat > ~/.config/gpu.conf << 'EOF'
 export GALLIUM_DRIVER=llvmpipe
@@ -198,21 +184,35 @@ EOF
 echo ""
 echo "🚀 Starting Desktop Environment..."
 source ~/.config/gpu.conf 2>/dev/null
+
+# Environment variables for screen sharing
+export WEBRTC_ENABLE_SCREEN_CAPTURE=1
+export MOZ_ENABLE_WAYLAND=0
+export XDG_CURRENT_DESKTOP=XFCE
+
 # Kill old sessions
 pkill -9 -f "termux.x11" 2>/dev/null
 pkill -9 -f "xfce" 2>/dev/null
+
 # Audio
 pulseaudio --kill 2>/dev/null
 sleep 0.5
 pulseaudio --start --exit-idle-time=-1
 pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1 2>/dev/null
 export PULSE_SERVER=127.0.0.1
+
+# Start xdg-desktop-portal (required for screen capture)
+dbus-launch --exit-with-session /usr/libexec/xdg-desktop-portal-termux &
+dbus-launch --exit-with-session /usr/libexec/xdg-desktop-portal-gtk &
+
 # X11
 termux-x11 :0 -ac &
 sleep 3
 export DISPLAY=:0
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " 📱 Open Termux-X11 app to see the desktop!"
+echo " 📸 Screen sharing: In Firefox, go to about:config"
+echo "    set 'media.webrtc.screen.allow' to true"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 exec startxfce4
 EOF
@@ -224,6 +224,7 @@ EOF
 pkill -9 -f "termux.x11" 2>/dev/null
 pkill -9 -f "pulseaudio" 2>/dev/null
 pkill -9 -f "xfce" 2>/dev/null
+pkill -9 -f "xdg-desktop-portal" 2>/dev/null
 echo "Desktop stopped."
 EOF
     chmod +x ~/stop-desktop.sh
@@ -245,17 +246,6 @@ Icon=firefox
 Type=Application
 Categories=Network;
 FIREFOX
-
-    # VLC
-    cat > ~/Desktop/VLC.desktop << 'VLC'
-[Desktop Entry]
-Name=VLC Media Player
-Comment=Play media files
-Exec=vlc
-Icon=vlc
-Type=Application
-Categories=AudioVideo;
-VLC
 
     # Terminal
     cat > ~/Desktop/Terminal.desktop << 'TERM'
@@ -290,22 +280,26 @@ show_summary() {
     echo -e "${GREEN}══════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo -e "${WHITE}📦 Installed applications:${NC}"
-    echo -e " ${CYAN}•${NC} Firefox ${GREEN}✓${NC}"
-    echo -e " ${CYAN}•${NC} VLC Media Player ${GREEN}✓${NC}"
-    echo -e " ${CYAN}•${NC} Development tools (GCC, Clang, Python, Node, Rust, ...) ${GREEN}✓${NC}"
+    echo -e " ${CYAN}•${NC} Firefox (with screen sharing support) ${GREEN}✓${NC}"
     echo -e " ${CYAN}•${NC} XFCE4 Desktop ${GREEN}✓${NC}"
+    echo -e " ${CYAN}•${NC} Essentials: git, curl, wget, htop, neofetch ${GREEN}✓${NC}"
     echo ""
     echo -e "${WHITE}🚀 Commands:${NC}"
-    echo -e " ${GREEN}bash ~/start-desktop.sh${NC} - Start XFCE desktop"
+    echo -e " ${GREEN}bash ~/start-desktop.sh${NC} - Start desktop"
     echo -e " ${GREEN}bash ~/stop-desktop.sh${NC}  - Stop desktop"
+    echo ""
+    echo -e "${WHITE}📸 For Discord screen sharing:${NC}"
+    echo -e " 1. In Firefox, type 'about:config' in address bar"
+    echo -e " 2. Search for 'media.webrtc.screen.allow' and set to true"
+    echo -e " 3. Restart Firefox and try screen sharing"
     echo ""
 }
 
 # ============== MAIN ==============
 main() {
     print_banner
-    echo -e "${WHITE}This script will install a Linux desktop with Firefox, VLC, and dev tools.${NC}"
-    echo -e "${GRAY}Estimated time: 15-25 minutes (depends on internet).${NC}\n"
+    echo -e "${WHITE}This script will install a lightweight Linux desktop with Firefox.${NC}"
+    echo -e "${GRAY}Estimated time: 12-20 minutes (depends on internet).${NC}\n"
     check_storage
     echo ""
     echo -e "${YELLOW}Press ENTER to start or Ctrl+C to cancel...${NC}"
@@ -317,9 +311,9 @@ main() {
     step_desktop
     step_gpu
     step_audio
+    step_screen_share
     step_browser
-    step_media
-    step_dev_tools
+    step_essentials
     step_launchers
     step_shortcuts
     show_summary
