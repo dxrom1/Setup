@@ -1,15 +1,16 @@
 #!/data/data/com.termux/files/usr/bin/bash
 #######################################################
-# 📱 Mobile Linux Desktop - Minimal Installer
+# 📱 Mobile Linux Desktop - Minimal Installer (Firefox Fix)
 # Features:
 #   - Overall progress percentage
 #   - GPU acceleration auto-setup (Turnip/Zink)
 #   - XFCE4 desktop, Firefox, audio, and basic tools
 #   - One-click desktop launch
+#   - Firefox launch fixes (DBus, X11 backend, no-sandbox)
 #######################################################
 
 # ============== CONFIGURATION ==============
-TOTAL_STEPS=9
+TOTAL_STEPS=10
 CURRENT_STEP=0
 
 # ============== COLORS ==============
@@ -75,7 +76,7 @@ show_banner() {
     cat << 'BANNER'
 ╔══════════════════════════════════════╗
 ║                                      ║
-║   🚀 MOBILE LINUX DESKTOP v1.0 🚀    ║
+║   🚀 MOBILE LINUX DESKTOP v1.1 🚀    ║
 ║                                      ║
 ╚══════════════════════════════════════╝
 BANNER
@@ -167,16 +168,16 @@ step_audio() {
     install_pkg "pulseaudio" "PulseAudio Sound Server"
 }
 
-# ============== STEP 7: INSTALL APPLICATIONS ==============
+# ============== STEP 7: INSTALL APPLICATIONS & DBUS ==============
 step_apps() {
     update_progress
     echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Installing Applications...${NC}"
     echo ""
     install_pkg "firefox" "Firefox Browser"
+    install_pkg "dbus" "DBus (required for Firefox)"
     install_pkg "git" "Git Version Control"
     install_pkg "wget" "Wget Downloader"
     install_pkg "curl" "cURL"
-    # ffmpeg for possible screen recording needs
     install_pkg "ffmpeg" "FFmpeg (Multimedia Framework)"
 }
 
@@ -198,6 +199,9 @@ export MESA_LOADER_DRIVER_OVERRIDE=zink
 export TU_DEBUG=noconform
 export MESA_VK_WSI_PRESENT_MODE=immediate
 export ZINK_DESCRIPTORS=lazy
+# Force X11 backend for Firefox
+export GDK_BACKEND=x11
+export MOZ_ENABLE_WAYLAND=0
 GPUEOF
     echo -e " ${GREEN}✓${NC} GPU config created"
 
@@ -205,7 +209,28 @@ GPUEOF
         echo 'source ~/.config/desktop-gpu.sh 2>/dev/null' >> ~/.bashrc
     fi
 
-    # Main Desktop Launcher
+    # Firefox wrapper script
+    cat > ~/.local/bin/firefox-wrapper << 'WRAPPEREOF'
+#!/data/data/com.termux/files/usr/bin/bash
+# Firefox wrapper for Termux-X11
+source ~/.config/desktop-gpu.sh 2>/dev/null
+# Ensure DBus is running
+if ! pgrep -x "dbus-daemon" > /dev/null; then
+    dbus-daemon --session --fork
+fi
+# Launch Firefox with X11 backend and no sandbox
+exec firefox --no-sandbox "$@"
+WRAPPEREOF
+    mkdir -p ~/.local/bin
+    chmod +x ~/.local/bin/firefox-wrapper
+    echo -e " ${GREEN}✓${NC} Created Firefox wrapper"
+
+    # Update PATH
+    if ! grep -q "\.local/bin" ~/.bashrc 2>/dev/null; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    fi
+
+    # Main Desktop Launcher (with DBus start)
     cat > ~/start-desktop.sh << 'LAUNCHEREOF'
 #!/data/data/com.termux/files/usr/bin/bash
 echo ""
@@ -231,6 +256,11 @@ pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymou
 export PULSE_SERVER=127.0.0.1
 # === END AUDIO ===
 
+# Start DBus session (required for Firefox)
+echo "📡 Starting DBus session..."
+dbus-daemon --session --fork
+sleep 1
+
 # Start Termux-X11 server
 echo "📺 Starting X11 display server..."
 termux-x11 :0 -ac &
@@ -244,6 +274,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo " 📱 Open the Termux-X11 app to see the desktop!"
 echo " 🔊 Audio is enabled for Firefox and Discord web"
+echo " 🌐 Firefox is ready with proper X11 backend"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 exec startxfce4
@@ -272,15 +303,16 @@ step_shortcuts() {
     echo ""
     mkdir -p ~/Desktop
 
-    # Firefox
+    # Firefox shortcut (use wrapper)
     cat > ~/Desktop/Firefox.desktop << 'EOF'
 [Desktop Entry]
 Name=Firefox
 Comment=Web Browser
-Exec=firefox
+Exec=firefox-wrapper
 Icon=firefox
 Type=Application
 Categories=Network;WebBrowser;
+StartupNotify=true
 EOF
 
     # Terminal
@@ -307,6 +339,18 @@ EOF
 
     chmod +x ~/Desktop/*.desktop 2>/dev/null
     echo -e " ${GREEN}✓${NC} Desktop shortcuts created"
+}
+
+# ============== STEP 10: ADDITIONAL CONFIGURATION ==============
+step_additional_config() {
+    update_progress
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Applying final configurations...${NC}"
+    echo ""
+    # Ensure the wrapper is in PATH for the desktop session
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    # Set Firefox as default browser (optional)
+    echo 'export BROWSER=firefox-wrapper' >> ~/.bashrc
+    echo -e " ${GREEN}✓${NC} Environment variables updated"
 }
 
 # ============== COMPLETION ==============
@@ -338,16 +382,15 @@ COMPLETE
     echo -e "${CYAN}📦 INSTALLED COMPONENTS:${NC}"
     echo -e " • XFCE4 Desktop Environment"
     echo -e " • Termux-X11 display server"
-    echo -e " • Firefox web browser (use for Discord)"
+    echo -e " • Firefox browser (with X11 backend fix)"
     echo -e " • PulseAudio (audio for voice calls)"
+    echo -e " • DBus (required for Firefox)"
     echo -e " • GPU acceleration (if supported)"
     echo -e " • Git, wget, curl, ffmpeg"
     echo ""
     echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${WHITE}⚡ TIP: Open Termux-X11 app first, then run start-desktop.sh${NC}"
-    echo ""
-    echo -e "${WHITE}🌐 For Discord, open Firefox, log in to discord.com, and use${NC}"
-    echo -e "${WHITE}   voice/video calls. Screen sharing is supported in Firefox.${NC}"
+    echo -e "${WHITE}🌐 Firefox should now launch without the channel error.${NC}"
     echo ""
 }
 
@@ -372,6 +415,7 @@ main() {
     step_apps
     step_launchers
     step_shortcuts
+    step_additional_config
 
     show_completion
 }
