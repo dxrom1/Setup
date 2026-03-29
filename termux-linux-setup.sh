@@ -7,6 +7,7 @@
 #   - XFCE4 desktop, Firefox, audio, and basic tools
 #   - One-click desktop launch
 #   - Firefox launch fixes (DBus, X11 backend, no-sandbox)
+# Version: 1.2 (Fixed & Optimized)
 #######################################################
 
 # ============== CONFIGURATION ==============
@@ -37,9 +38,9 @@ update_progress() {
     for ((i=0; i<EMPTY; i++)); do BAR+="░"; done
     BAR+="${NC}"
     echo ""
-    echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN} 📊 OVERALL PROGRESS: ${WHITE}Step ${CURRENT_STEP}/${TOTAL_STEPS}${NC} ${BAR} ${WHITE}${PERCENT}%${NC}"
-    echo -e "${WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "\( {WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ \){NC}"
+    echo -e "${CYAN} 📊 OVERALL PROGRESS: ${WHITE}Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}${NC} ${BAR} \( {WHITE} \){PERCENT}%${NC}"
+    echo -e "\( {WHITE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ \){NC}"
     echo ""
 }
 
@@ -50,15 +51,15 @@ spinner() {
     local i=0
     while kill -0 $pid 2>/dev/null; do
         i=$(( (i+1) % 10 ))
-        printf "\r ${YELLOW}⏳${NC} ${message} ${CYAN}${spin:$i:1}${NC} "
+        printf "\r \( {YELLOW}⏳ \){NC} ${message} \( {CYAN} \){spin:\( i:1} \){NC} "
         sleep 0.1
     done
     wait $pid
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
-        printf "\r ${GREEN}✓${NC} ${message} \n"
+        printf "\r \( {GREEN}✓ \){NC} ${message} \n"
     else
-        printf "\r ${RED}✗${NC} ${message} ${RED}(failed)${NC} \n"
+        printf "\r \( {RED}✗ \){NC} ${message} \( {RED}(failed) \){NC} \n"
     fi
     return $exit_code
 }
@@ -66,7 +67,7 @@ spinner() {
 install_pkg() {
     local pkg=$1
     local name=${2:-$pkg}
-    (yes | pkg install $pkg -y > /dev/null 2>&1) & spinner $! "Installing ${name}..."
+    (pkg install -y "$pkg" > /dev/null 2>&1) & spinner $! "Installing ${name}..."
 }
 
 # ============== BANNER ==============
@@ -76,7 +77,7 @@ show_banner() {
     cat << 'BANNER'
 ╔══════════════════════════════════════╗
 ║                                      ║
-║   🚀 MOBILE LINUX DESKTOP v1.1 🚀    ║
+║   🚀 MOBILE LINUX DESKTOP v1.2 🚀    ║
 ║                                      ║
 ╚══════════════════════════════════════╝
 BANNER
@@ -86,22 +87,22 @@ BANNER
 
 # ============== DEVICE DETECTION ==============
 detect_device() {
-    echo -e "${PURPLE}[*] Detecting your device...${NC}"
+    echo -e "\( {PURPLE}[*] Detecting your device... \){NC}"
     echo ""
     DEVICE_MODEL=$(getprop ro.product.model 2>/dev/null || echo "Unknown")
     DEVICE_BRAND=$(getprop ro.product.brand 2>/dev/null || echo "Unknown")
     ANDROID_VERSION=$(getprop ro.build.version.release 2>/dev/null || echo "Unknown")
     CPU_ABI=$(getprop ro.product.cpu.abi 2>/dev/null || echo "arm64-v8a")
     GPU_VENDOR=$(getprop ro.hardware.egl 2>/dev/null || echo "")
-    echo -e " ${GREEN}📱${NC} Device: ${WHITE}${DEVICE_BRAND} ${DEVICE_MODEL}${NC}"
-    echo -e " ${GREEN}🤖${NC} Android: ${WHITE}${ANDROID_VERSION}${NC}"
-    echo -e " ${GREEN}⚙️${NC} CPU: ${WHITE}${CPU_ABI}${NC}"
+    echo -e " \( {GREEN}📱 \){NC} Device: \( {WHITE} \){DEVICE_BRAND} \( {DEVICE_MODEL} \){NC}"
+    echo -e " \( {GREEN}🤖 \){NC} Android: \( {WHITE} \){ANDROID_VERSION}${NC}"
+    echo -e " \( {GREEN}⚙️ \){NC} CPU: \( {WHITE} \){CPU_ABI}${NC}"
     if [[ "$GPU_VENDOR" == *"adreno"* ]] || [[ "$DEVICE_BRAND" == *"samsung"* ]] || [[ "$DEVICE_BRAND" == *"Samsung"* ]] || [[ "$DEVICE_BRAND" == *"oneplus"* ]] || [[ "$DEVICE_BRAND" == *"xiaomi"* ]]; then
         GPU_DRIVER="freedreno"
-        echo -e " ${GREEN}🎮${NC} GPU: ${WHITE}Adreno (Qualcomm) - Turnip driver${NC}"
+        echo -e " \( {GREEN}🎮 \){NC} GPU: \( {WHITE}Adreno (Qualcomm) - Turnip driver \){NC}"
     else
         GPU_DRIVER="swrast"
-        echo -e " ${GREEN}🎮${NC} GPU: ${WHITE}Software rendering${NC}"
+        echo -e " \( {GREEN}🎮 \){NC} GPU: \( {WHITE}Software rendering \){NC}"
     fi
     echo ""
     sleep 1
@@ -110,16 +111,16 @@ detect_device() {
 # ============== STEP 1: UPDATE SYSTEM ==============
 step_update() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Updating system packages...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Updating system packages...${NC}"
     echo ""
-    (yes | pkg update -y > /dev/null 2>&1) & spinner $! "Updating package lists..."
-    (yes | pkg upgrade -y > /dev/null 2>&1) & spinner $! "Upgrading installed packages..."
+    (pkg update > /dev/null 2>&1) & spinner $! "Updating package lists..."
+    (pkg upgrade -y > /dev/null 2>&1) & spinner $! "Upgrading installed packages..."
 }
 
 # ============== STEP 2: INSTALL REPOSITORIES ==============
 step_repos() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Adding package repositories...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Adding package repositories...${NC}"
     echo ""
     install_pkg "x11-repo" "X11 Repository"
     install_pkg "tur-repo" "TUR Repository (Firefox)"
@@ -128,7 +129,7 @@ step_repos() {
 # ============== STEP 3: INSTALL TERMUX-X11 ==============
 step_x11() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Installing Termux-X11...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Installing Termux-X11...${NC}"
     echo ""
     install_pkg "termux-x11-nightly" "Termux-X11 Display Server"
     install_pkg "xorg-xrandr" "XRandR (Display Settings)"
@@ -137,7 +138,7 @@ step_x11() {
 # ============== STEP 4: INSTALL DESKTOP ==============
 step_desktop() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Installing XFCE4 Desktop...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Installing XFCE4 Desktop...${NC}"
     echo ""
     install_pkg "xfce4" "XFCE4 Desktop Environment"
     install_pkg "xfce4-terminal" "XFCE4 Terminal"
@@ -148,7 +149,7 @@ step_desktop() {
 # ============== STEP 5: INSTALL GPU DRIVERS ==============
 step_gpu() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Installing GPU Acceleration (Turnip/Zink)...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Installing GPU Acceleration (Turnip/Zink)...${NC}"
     echo ""
     install_pkg "mesa-zink" "Mesa Zink (OpenGL over Vulkan)"
     if [ "$GPU_DRIVER" == "freedreno" ]; then
@@ -157,13 +158,13 @@ step_gpu() {
         install_pkg "mesa-vulkan-icd-swrast" "Software Vulkan Renderer"
     fi
     install_pkg "vulkan-loader-android" "Vulkan Loader"
-    echo -e " ${GREEN}✓${NC} GPU acceleration configured!"
+    echo -e " \( {GREEN}✓ \){NC} GPU acceleration configured!"
 }
 
 # ============== STEP 6: INSTALL AUDIO ==============
 step_audio() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Installing Audio Support...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Installing Audio Support...${NC}"
     echo ""
     install_pkg "pulseaudio" "PulseAudio Sound Server"
 }
@@ -171,7 +172,7 @@ step_audio() {
 # ============== STEP 7: INSTALL APPLICATIONS & DBUS ==============
 step_apps() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Installing Applications...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Installing Applications...${NC}"
     echo ""
     install_pkg "firefox" "Firefox Browser"
     install_pkg "dbus" "DBus (required for Firefox)"
@@ -184,12 +185,12 @@ step_apps() {
 # ============== STEP 8: CREATE LAUNCHER SCRIPTS ==============
 step_launchers() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Creating Launcher Scripts...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Creating Launcher Scripts...${NC}"
     echo ""
 
     # GPU Configuration file
-    mkdir -p ~/.config
-    cat > ~/.config/desktop-gpu.sh << 'GPUEOF'
+    mkdir -p \~/.config
+    cat > \~/.config/desktop-gpu.sh << 'GPUEOF'
 # Mobile Linux Desktop - GPU Acceleration Config
 export MESA_NO_ERROR=1
 export MESA_GL_VERSION_OVERRIDE=4.6
@@ -203,17 +204,18 @@ export ZINK_DESCRIPTORS=lazy
 export GDK_BACKEND=x11
 export MOZ_ENABLE_WAYLAND=0
 GPUEOF
-    echo -e " ${GREEN}✓${NC} GPU config created"
+    echo -e " \( {GREEN}✓ \){NC} GPU config created"
 
-    if ! grep -q "desktop-gpu.sh" ~/.bashrc 2>/dev/null; then
-        echo 'source ~/.config/desktop-gpu.sh 2>/dev/null' >> ~/.bashrc
+    if ! grep -q "desktop-gpu.sh" \~/.bashrc 2>/dev/null; then
+        echo 'source \~/.config/desktop-gpu.sh 2>/dev/null || true' >> \~/.bashrc
     fi
 
     # Firefox wrapper script
-    cat > ~/.local/bin/firefox-wrapper << 'WRAPPEREOF'
+    mkdir -p \~/.local/bin
+    cat > \~/.local/bin/firefox-wrapper << 'WRAPPEREOF'
 #!/data/data/com.termux/files/usr/bin/bash
 # Firefox wrapper for Termux-X11
-source ~/.config/desktop-gpu.sh 2>/dev/null
+source \~/.config/desktop-gpu.sh 2>/dev/null || true
 # Ensure DBus is running
 if ! pgrep -x "dbus-daemon" > /dev/null; then
     dbus-daemon --session --fork
@@ -221,29 +223,29 @@ fi
 # Launch Firefox with X11 backend and no sandbox
 exec firefox --no-sandbox "$@"
 WRAPPEREOF
-    mkdir -p ~/.local/bin
-    chmod +x ~/.local/bin/firefox-wrapper
-    echo -e " ${GREEN}✓${NC} Created Firefox wrapper"
+    chmod +x \~/.local/bin/firefox-wrapper
+    echo -e " \( {GREEN}✓ \){NC} Created Firefox wrapper"
 
     # Update PATH
-    if ! grep -q "\.local/bin" ~/.bashrc 2>/dev/null; then
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    if ! grep -q "\.local/bin" \~/.bashrc 2>/dev/null; then
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> \~/.bashrc
     fi
 
     # Main Desktop Launcher (with DBus start)
-    cat > ~/start-desktop.sh << 'LAUNCHEREOF'
+    cat > \~/start-desktop.sh << 'LAUNCHEREOF'
 #!/data/data/com.termux/files/usr/bin/bash
 echo ""
 echo "🚀 Starting Mobile Linux Desktop..."
 echo ""
 
-source ~/.config/desktop-gpu.sh 2>/dev/null
+source \~/.config/desktop-gpu.sh 2>/dev/null || true
 
 # Kill any existing sessions
 echo "🔄 Cleaning up old sessions..."
 pkill -9 -f "termux.x11" 2>/dev/null
 pkill -9 -f "xfce" 2>/dev/null
 pkill -9 -f "dbus" 2>/dev/null
+pkill -9 -f "pulseaudio" 2>/dev/null
 
 # === AUDIO SETUP ===
 unset PULSE_SERVER
@@ -252,7 +254,7 @@ sleep 0.5
 echo "🔊 Starting audio server..."
 pulseaudio --start --exit-idle-time=-1
 sleep 1
-pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1 2>/dev/null
+pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1 2>/dev/null || true
 export PULSE_SERVER=127.0.0.1
 # === END AUDIO ===
 
@@ -279,11 +281,11 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 exec startxfce4
 LAUNCHEREOF
-    chmod +x ~/start-desktop.sh
-    echo -e " ${GREEN}✓${NC} Created ~/start-desktop.sh"
+    chmod +x \~/start-desktop.sh
+    echo -e " \( {GREEN}✓ \){NC} Created \~/start-desktop.sh"
 
     # Desktop Shutdown Script
-    cat > ~/stop-desktop.sh << 'STOPEOF'
+    cat > \~/stop-desktop.sh << 'STOPEOF'
 #!/data/data/com.termux/files/usr/bin/bash
 echo "Stopping Mobile Linux Desktop..."
 pkill -9 -f "termux.x11" 2>/dev/null
@@ -292,19 +294,19 @@ pkill -9 -f "xfce" 2>/dev/null
 pkill -9 -f "dbus" 2>/dev/null
 echo "Desktop stopped."
 STOPEOF
-    chmod +x ~/stop-desktop.sh
-    echo -e " ${GREEN}✓${NC} Created ~/stop-desktop.sh"
+    chmod +x \~/stop-desktop.sh
+    echo -e " \( {GREEN}✓ \){NC} Created \~/stop-desktop.sh"
 }
 
 # ============== STEP 9: CREATE DESKTOP SHORTCUTS ==============
 step_shortcuts() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Creating Desktop Shortcuts...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Creating Desktop Shortcuts...${NC}"
     echo ""
-    mkdir -p ~/Desktop
+    mkdir -p \~/Desktop
 
     # Firefox shortcut (use wrapper)
-    cat > ~/Desktop/Firefox.desktop << 'EOF'
+    cat > \~/Desktop/Firefox.desktop << 'EOF'
 [Desktop Entry]
 Name=Firefox
 Comment=Web Browser
@@ -316,7 +318,7 @@ StartupNotify=true
 EOF
 
     # Terminal
-    cat > ~/Desktop/Terminal.desktop << 'EOF'
+    cat > \~/Desktop/Terminal.desktop << 'EOF'
 [Desktop Entry]
 Name=Terminal
 Comment=XFCE Terminal
@@ -327,7 +329,7 @@ Categories=System;TerminalEmulator;
 EOF
 
     # File Manager
-    cat > ~/Desktop/FileManager.desktop << 'EOF'
+    cat > \~/Desktop/FileManager.desktop << 'EOF'
 [Desktop Entry]
 Name=File Manager
 Comment=Thunar
@@ -337,20 +339,20 @@ Type=Application
 Categories=System;FileManager;
 EOF
 
-    chmod +x ~/Desktop/*.desktop 2>/dev/null
-    echo -e " ${GREEN}✓${NC} Desktop shortcuts created"
+    chmod +x \~/Desktop/*.desktop 2>/dev/null || true
+    echo -e " \( {GREEN}✓ \){NC} Desktop shortcuts created"
 }
 
 # ============== STEP 10: ADDITIONAL CONFIGURATION ==============
 step_additional_config() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}/${TOTAL_STEPS}] Applying final configurations...${NC}"
+    echo -e "${PURPLE}[Step \( {CURRENT_STEP}/ \){TOTAL_STEPS}] Applying final configurations...${NC}"
     echo ""
     # Ensure the wrapper is in PATH for the desktop session
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> \~/.bashrc
     # Set Firefox as default browser (optional)
-    echo 'export BROWSER=firefox-wrapper' >> ~/.bashrc
-    echo -e " ${GREEN}✓${NC} Environment variables updated"
+    echo 'export BROWSER=firefox-wrapper' >> \~/.bashrc
+    echo -e " \( {GREEN}✓ \){NC} Environment variables updated"
 }
 
 # ============== COMPLETION ==============
@@ -367,43 +369,43 @@ show_completion() {
 ╚═══════════════════════════════════════════════════════════════╝
 COMPLETE
     echo -e "${NC}"
-    echo -e "${WHITE}📱 Your Mobile Linux Desktop is ready!${NC}"
+    echo -e "\( {WHITE}📱 Your Mobile Linux Desktop is ready! \){NC}"
     echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "\( {YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ \){NC}"
     echo ""
-    echo -e "${WHITE}🚀 TO START THE DESKTOP:${NC}"
-    echo -e " ${GREEN}bash ~/start-desktop.sh${NC}"
+    echo -e "\( {WHITE}🚀 TO START THE DESKTOP: \){NC}"
+    echo -e " \( {GREEN}bash \~/start-desktop.sh \){NC}"
     echo ""
-    echo -e "${WHITE}🛑 TO STOP THE DESKTOP:${NC}"
-    echo -e " ${GREEN}bash ~/stop-desktop.sh${NC}"
+    echo -e "\( {WHITE}🛑 TO STOP THE DESKTOP: \){NC}"
+    echo -e " \( {GREEN}bash \~/stop-desktop.sh \){NC}"
     echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "\( {YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ \){NC}"
     echo ""
-    echo -e "${CYAN}📦 INSTALLED COMPONENTS:${NC}"
+    echo -e "\( {CYAN}📦 INSTALLED COMPONENTS: \){NC}"
     echo -e " • XFCE4 Desktop Environment"
     echo -e " • Termux-X11 display server"
-    echo -e " • Firefox browser (with X11 backend fix)"
+    echo -e " • Firefox browser (with X11 backend + DBus fix)"
     echo -e " • PulseAudio (audio for voice calls)"
     echo -e " • DBus (required for Firefox)"
     echo -e " • GPU acceleration (if supported)"
     echo -e " • Git, wget, curl, ffmpeg"
     echo ""
-    echo -e "${PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${WHITE}⚡ TIP: Open Termux-X11 app first, then run start-desktop.sh${NC}"
-    echo -e "${WHITE}🌐 Firefox should now launch without the channel error.${NC}"
+    echo -e "\( {PURPLE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ \){NC}"
+    echo -e "\( {WHITE}⚡ TIP: Open Termux-X11 app first, then run start-desktop.sh \){NC}"
+    echo -e "\( {WHITE}🌐 Firefox should now launch without the channel error. \){NC}"
     echo ""
 }
 
 # ============== MAIN INSTALLATION ==============
 main() {
     show_banner
-    echo -e "${WHITE} This script will install a Linux desktop environment with${NC}"
-    echo -e "${WHITE} Firefox, audio support, and basic utilities on your Android.${NC}"
+    echo -e "\( {WHITE} This script will install a Linux desktop environment with \){NC}"
+    echo -e "\( {WHITE} Firefox, audio support, and basic utilities on your Android. \){NC}"
     echo ""
-    echo -e "${GRAY} Estimated time: 10-20 minutes (depends on internet speed)${NC}"
+    echo -e "\( {GRAY} Estimated time: 10-20 minutes (depends on internet speed) \){NC}"
     echo ""
-    echo -e "${YELLOW} Press Enter to start installation, or Ctrl+C to cancel...${NC}"
-    read
+    echo -e "\( {YELLOW} Press Enter to start installation, or Ctrl+C to cancel... \){NC}"
+    read -r
 
     detect_device
     step_update
