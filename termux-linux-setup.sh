@@ -2,16 +2,16 @@
 ##########################################################
 #  🎨 ULTIMATE TERMUX DESKTOP INSTALLER
 #  ------------------------------------------------------
-#  Installs: Firefox | Chromium | VS Code | Blender |
-#            LibreOffice (PowerPoint) | Extra coding tools
+#  Installs: Firefox | Chromium | VS Code |
+#            Extra coding tools
 #
 #  With GPU acceleration, audio, and beautiful UI
 ##########################################################
 
 # ============== CONFIG ==============
-TOTAL_STEPS=14
+TOTAL_STEPS=11                     # Removed Blender & LibreOffice
 CURRENT_STEP=0
-REQUIRED_SPACE_MB=3500  # Blender + tools need more space
+REQUIRED_SPACE_MB=2500             # Less space needed without Blender/LibreOffice
 
 # ============== COLORS ==============
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -28,7 +28,6 @@ print_banner() {
     ║     🚀  TERMUX DEV + CREATOR INSTALLER  🚀          ║
     ║                                                      ║
     ║   🔥 Firefox   ●   🌐 Chromium   ●   💻 VS Code     ║
-    ║   🎨 Blender   ●   📊 LibreOffice (PowerPoint)      ║
     ║   🛠️  GCC · Clang · Python · Node · Rust · more     ║
     ╚══════════════════════════════════════════════════════╝
 EOF
@@ -184,18 +183,6 @@ step_vscode() {
     install_pkg "code-oss" "VS Code (Open Source)"
 }
 
-step_blender() {
-    update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing Blender 3D...${NC}\n"
-    if pkg show blender >/dev/null 2>&1; then
-        install_pkg "blender" "Blender"
-        echo -e "  ${GREEN}✓ Blender installed. Note: 3D rendering may be slow on some devices.${NC}"
-    else
-        echo -e "  ${YELLOW}⚠️ Blender is not available in Termux repositories.${NC}"
-        echo -e "  ${WHITE}You can try building from source or use an alternative like https://blender.org.${NC}"
-    fi
-}
-
 step_dev_tools() {
     update_progress
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing extra development tools...${NC}\n"
@@ -230,18 +217,6 @@ step_dev_tools() {
     install_pkg "subversion" "Subversion"
     
     echo -e "  ${GREEN}✓ Development tools installed${NC}"
-}
-
-step_libreoffice() {
-    update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing LibreOffice (PowerPoint support)...${NC}\n"
-    if pkg show libreoffice >/dev/null 2>&1; then
-        install_pkg "libreoffice" "LibreOffice Suite"
-        echo -e "  ${GREEN}✓ Use LibreOffice Impress to open/edit PowerPoint files.${NC}"
-    else
-        echo -e "  ${YELLOW}⚠️ LibreOffice not available in repositories.${NC}"
-        echo -e "  ${WHITE}You can still use web-based PowerPoint via browser.${NC}"
-    fi
 }
 
 step_launchers() {
@@ -342,32 +317,6 @@ Type=Application
 Categories=Development;
 VSCODE
 
-    # Blender (if installed)
-    if command -v blender >/dev/null 2>&1; then
-        cat > ~/Desktop/Blender.desktop << 'BLENDER'
-[Desktop Entry]
-Name=Blender
-Comment=3D Creation Suite
-Exec=blender
-Icon=blender
-Type=Application
-Categories=Graphics;
-BLENDER
-    fi
-
-    # LibreOffice (if installed)
-    if command -v libreoffice >/dev/null 2>&1; then
-        cat > ~/Desktop/LibreOffice.desktop << 'LIBRE'
-[Desktop Entry]
-Name=LibreOffice
-Comment=Office Suite
-Exec=libreoffice
-Icon=libreoffice
-Type=Application
-Categories=Office;
-LIBRE
-    fi
-
     # Terminal
     cat > ~/Desktop/Terminal.desktop << 'TERM'
 [Desktop Entry]
@@ -405,24 +354,11 @@ show_summary() {
     echo -e "  ${CYAN}•${NC} Firefox         ${GREEN}✓${NC}"
     echo -e "  ${CYAN}•${NC} Chromium        ${GREEN}✓${NC}"
     echo -e "  ${CYAN}•${NC} VS Code         ${GREEN}✓${NC}"
-    if command -v blender >/dev/null 2>&1; then
-        echo -e "  ${CYAN}•${NC} Blender         ${GREEN}✓${NC}"
-    else
-        echo -e "  ${CYAN}•${NC} Blender         ${YELLOW}not installed (not in repo)${NC}"
-    fi
-    if command -v libreoffice >/dev/null 2>&1; then
-        echo -e "  ${CYAN}•${NC} LibreOffice     ${GREEN}✓${NC} (PowerPoint support)"
-    else
-        echo -e "  ${CYAN}•${NC} LibreOffice     ${YELLOW}not installed (optional)${NC}"
-    fi
     echo -e "  ${CYAN}•${NC} Development tools (GCC, Clang, Python, Node, Rust, ...) ${GREEN}✓${NC}"
     echo ""
     echo -e "${WHITE}🚀 Commands:${NC}"
     echo -e "  ${GREEN}bash ~/start-desktop.sh${NC}  - Start XFCE desktop"
     echo -e "  ${GREEN}bash ~/stop-desktop.sh${NC}   - Stop desktop"
-    echo ""
-    echo -e "${YELLOW}Note:${NC} For PowerPoint, use LibreOffice Impress or"
-    echo -e "      Microsoft 365 online in any browser."
     echo ""
 }
 
@@ -430,7 +366,7 @@ show_summary() {
 main() {
     print_banner
     echo -e "${WHITE}This script will install a full Linux desktop with the apps above.${NC}"
-    echo -e "${GRAY}Estimated time: 20-30 minutes (depends on internet).${NC}\n"
+    echo -e "${GRAY}Estimated time: 15-20 minutes (depends on internet).${NC}\n"
     check_storage
     echo ""
     echo -e "${YELLOW}Press ENTER to start or Ctrl+C to cancel...${NC}"
@@ -445,9 +381,7 @@ main() {
     step_audio
     step_browsers
     step_vscode
-    step_blender
     step_dev_tools
-    step_libreoffice
     step_launchers
     step_shortcuts
 
