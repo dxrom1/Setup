@@ -1,17 +1,14 @@
 #!/data/data/com.termux/files/usr/bin/bash
 ##########################################################
-#  🎨 ULTIMATE TERMUX DESKTOP INSTALLER
+#  🎨 TERMUX DESKTOP + SCREEN SHARE FIX + LAG REDUCTION
 #  ------------------------------------------------------
-#  Installs: Firefox | Chromium | VS Code |
-#            Extra coding tools
-#
-#  With GPU acceleration, audio, and beautiful UI
+#  Fixes: Discord screen share, browser lag, GPU acceleration
 ##########################################################
 
 # ============== CONFIG ==============
-TOTAL_STEPS=11                     # Removed Blender & LibreOffice
+TOTAL_STEPS=13
 CURRENT_STEP=0
-REQUIRED_SPACE_MB=2500             # Less space needed without Blender/LibreOffice
+REQUIRED_SPACE_MB=2800
 
 # ============== COLORS ==============
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -25,10 +22,9 @@ print_banner() {
     echo -e "${CYAN}"
     cat << "EOF"
     ╔══════════════════════════════════════════════════════╗
-    ║     🚀  TERMUX DEV + CREATOR INSTALLER  🚀          ║
-    ║                                                      ║
+    ║   🚀  TERMUX DEV + CREATOR INSTALLER (FIXED)       ║
+    ║   ✅ Discord screen share  |  🚀 Low lag           ║
     ║   🔥 Firefox   ●   🌐 Chromium   ●   💻 VS Code     ║
-    ║   🛠️  GCC · Clang · Python · Node · Rust · more     ║
     ╚══════════════════════════════════════════════════════╝
 EOF
     echo -e "${NC}"
@@ -132,7 +128,7 @@ step_repos() {
     update_progress
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Adding package repositories...${NC}\n"
     install_pkg "x11-repo" "X11 Repository"
-    install_pkg "tur-repo" "TUR Repository (extra GUI apps)"
+    install_pkg "tur-repo" "TUR Repository"
 }
 
 step_x11() {
@@ -149,6 +145,17 @@ step_desktop() {
     install_pkg "xfce4-terminal" "Terminal"
     install_pkg "thunar" "File Manager"
     install_pkg "mousepad" "Text Editor"
+    # Performance tweaks: disable compositing in xfwm4 (we'll use picom instead)
+    mkdir -p ~/.config/xfce4/xfconf/xfce-perchannel-xml
+    cat > ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfwm4" version="1.0">
+  <property name="general" type="empty">
+    <property name="use_compositing" type="bool" value="false"/>
+    <property name="vblank_mode" type="string" value="off"/>
+  </property>
+</channel>
+EOF
 }
 
 step_gpu() {
@@ -161,20 +168,71 @@ step_gpu() {
         install_pkg "mesa-vulkan-icd-swrast" "Software Vulkan"
     fi
     install_pkg "vulkan-loader-android" "Vulkan Loader"
+    # Additional GPU utils
+    install_pkg "mesa-utils" "Mesa utilities (glxinfo)"
     echo -e "  ${GREEN}✓${NC} GPU configured"
 }
 
 step_audio() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Setting up audio...${NC}\n"
-    install_pkg "pulseaudio" "PulseAudio"
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Setting up PipeWire (replaces PulseAudio for screen sharing)...${NC}\n"
+    # Remove PulseAudio to avoid conflict
+    pkg uninstall pulseaudio -y 2>/dev/null
+    install_pkg "pipewire" "PipeWire"
+    install_pkg "wireplumber" "WirePlumber (session manager)"
+    install_pkg "pipewire-pulse" "PipeWire Pulse replacement"
+    # Enable socket for apps
+    mkdir -p ~/.config/pipewire
+    cp /data/data/com.termux/files/usr/share/examples/pipewire/pipewire.conf ~/.config/pipewire/ 2>/dev/null || true
+}
+
+step_compositor() {
+    update_progress
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing Picom compositor (fixes screen sharing)...${NC}\n"
+    install_pkg "picom" "Picom (X11 compositor)"
+    # Create picom config for low latency
+    mkdir -p ~/.config/picom
+    cat > ~/.config/picom/picom.conf << 'EOF'
+backend = "glx";
+vsync = false;
+unredir-if-possible = false;
+experimental-backends = true;
+glx-no-stencil = true;
+glx-no-rebind-pixmap = true;
+xrender-sync-fence = true;
+EOF
+}
+
+step_portals() {
+    update_progress
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing desktop portals (required for Discord screen share)...${NC}\n"
+    install_pkg "xdg-desktop-portal" "XDG Desktop Portal"
+    install_pkg "xdg-desktop-portal-gtk" "GTK portal"
 }
 
 step_browsers() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing web browsers...${NC}\n"
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing web browsers with screen share & GPU flags...${NC}\n"
     install_pkg "firefox" "Firefox"
     install_pkg "chromium" "Chromium"
+    
+    # Create wrapper scripts that include hardware acceleration and screen share flags
+    cat > ~/bin/firefox-fixed << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+export MOZ_ENABLE_WAYLAND=0
+export MOZ_X11_EGL=1
+exec firefox --enable-features=VaapiVideoDecoder,VaapiVideoEncoder "$@"
+EOF
+    chmod +x ~/bin/firefox-fixed
+
+    cat > ~/bin/chromium-fixed << 'EOF'
+#!/data/data/com.termux/files/usr/bin/bash
+exec chromium --enable-features=VaapiVideoDecoder,VaapiVideoEncoder --use-gl=egl --ignore-gpu-blocklist --enable-gpu-rasterization --enable-zero-copy --disable-accelerated-2d-canvas --disable-gpu-sandbox --ozone-platform=x11 "$@"
+EOF
+    chmod +x ~/bin/chromium-fixed
+    
+    mkdir -p ~/bin
+    echo -e "  ${GREEN}✓${NC} Browser wrappers created (use 'firefox-fixed' or 'chromium-fixed')"
 }
 
 step_vscode() {
@@ -186,42 +244,31 @@ step_vscode() {
 step_dev_tools() {
     update_progress
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Installing extra development tools...${NC}\n"
-    
-    # Compilers & build tools
     install_pkg "gcc" "GCC"
     install_pkg "clang" "Clang"
     install_pkg "make" "Make"
     install_pkg "cmake" "CMake"
     install_pkg "pkg-config" "pkg-config"
-    
-    # Languages & runtimes
     install_pkg "python" "Python"
     install_pkg "nodejs" "Node.js"
     install_pkg "rust" "Rust"
-    
-    # Debuggers & analyzers
     install_pkg "gdb" "GDB"
     install_pkg "valgrind" "Valgrind"
     install_pkg "strace" "strace"
-    
-    # Editors & utilities
     install_pkg "vim" "Vim"
     install_pkg "nano" "Nano"
     install_pkg "git" "Git"
     install_pkg "curl" "cURL"
     install_pkg "wget" "Wget"
-    install_pkg "htop" "htop"
+    install_pkg "htop" "Htop"
     install_pkg "neofetch" "Neofetch"
-    
-    # Version control extras
     install_pkg "subversion" "Subversion"
-    
     echo -e "  ${GREEN}✓ Development tools installed${NC}"
 }
 
 step_launchers() {
     update_progress
-    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Creating launcher scripts...${NC}\n"
+    echo -e "${PURPLE}[Step ${CURRENT_STEP}] Creating launcher scripts with PipeWire & Picom...${NC}\n"
 
     mkdir -p ~/.config
     cat > ~/.config/gpu.conf << 'EOF'
@@ -231,6 +278,8 @@ export GALLIUM_DRIVER=zink
 export MESA_LOADER_DRIVER_OVERRIDE=zink
 export TU_DEBUG=noconform
 export MESA_VK_WSI_PRESENT_MODE=immediate
+export EGL_PLATFORM=x11
+export GDK_BACKEND=x11
 EOF
     echo -e "  ${GREEN}✓${NC} GPU config created"
 
@@ -241,27 +290,39 @@ EOF
     cat > ~/start-desktop.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
 echo ""
-echo "🚀 Starting Desktop Environment..."
+echo "🚀 Starting Desktop Environment with screen share support..."
 source ~/.config/gpu.conf 2>/dev/null
 
 # Kill old sessions
 pkill -9 -f "termux.x11" 2>/dev/null
 pkill -9 -f "xfce" 2>/dev/null
+pkill -9 -f "picom" 2>/dev/null
+pkill -9 -f "pipewire" 2>/dev/null
+pkill -9 -f "wireplumber" 2>/dev/null
 
-# Audio
-pulseaudio --kill 2>/dev/null
-sleep 0.5
-pulseaudio --start --exit-idle-time=-1
-pactl load-module module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1 2>/dev/null
-export PULSE_SERVER=127.0.0.1
+# Start PipeWire (replaces PulseAudio)
+pipewire -c ~/.config/pipewire/pipewire.conf &
+sleep 1
+wireplumber &
+sleep 1
+pipewire-pulse &
+sleep 1
+export PULSE_SERVER=unix:/tmp/pulse-socket
 
-# X11
+# Start Termux-X11
 termux-x11 :0 -ac &
 sleep 3
 export DISPLAY=:0
 
+# Start Picom compositor (fixes screen sharing)
+picom --config ~/.config/picom/picom.conf -b
+
+# Start XFCE (compositing already disabled in xfwm4)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  📱 Open Termux-X11 app to see the desktop!"
+echo "  🖥️  For Discord screen share:"
+echo "     - Use 'firefox-fixed' or 'chromium-fixed'"
+echo "     - Share entire screen (not window)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 exec startxfce4
 EOF
@@ -271,7 +332,9 @@ EOF
     cat > ~/stop-desktop.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
 pkill -9 -f "termux.x11" 2>/dev/null
-pkill -9 -f "pulseaudio" 2>/dev/null
+pkill -9 -f "pipewire" 2>/dev/null
+pkill -9 -f "wireplumber" 2>/dev/null
+pkill -9 -f "picom" 2>/dev/null
 pkill -9 -f "xfce" 2>/dev/null
 echo "Desktop stopped."
 EOF
@@ -284,23 +347,23 @@ step_shortcuts() {
     echo -e "${PURPLE}[Step ${CURRENT_STEP}] Placing desktop shortcuts...${NC}\n"
     mkdir -p ~/Desktop
 
-    # Firefox
+    # Firefox (using fixed wrapper)
     cat > ~/Desktop/Firefox.desktop << 'FIREFOX'
 [Desktop Entry]
-Name=Firefox
+Name=Firefox (Screen Share Fix)
 Comment=Web Browser
-Exec=firefox
+Exec=/data/data/com.termux/files/home/bin/firefox-fixed
 Icon=firefox
 Type=Application
 Categories=Network;
 FIREFOX
 
-    # Chromium
+    # Chromium (fixed wrapper)
     cat > ~/Desktop/Chromium.desktop << 'CHROMIUM'
 [Desktop Entry]
-Name=Chromium
+Name=Chromium (Screen Share Fix)
 Comment=Web Browser
-Exec=chromium-browser
+Exec=/data/data/com.termux/files/home/bin/chromium-fixed
 Icon=chromium
 Type=Application
 Categories=Network;
@@ -347,26 +410,33 @@ FM
 show_summary() {
     echo ""
     echo -e "${GREEN}══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}  ✅  INSTALLATION COMPLETE!  ✅${NC}"
+    echo -e "${GREEN}  ✅  INSTALLATION COMPLETE (SCREEN SHARE FIXED)  ✅${NC}"
     echo -e "${GREEN}══════════════════════════════════════════════════════════════${NC}"
     echo ""
     echo -e "${WHITE}📦 Installed applications:${NC}"
-    echo -e "  ${CYAN}•${NC} Firefox         ${GREEN}✓${NC}"
-    echo -e "  ${CYAN}•${NC} Chromium        ${GREEN}✓${NC}"
-    echo -e "  ${CYAN}•${NC} VS Code         ${GREEN}✓${NC}"
-    echo -e "  ${CYAN}•${NC} Development tools (GCC, Clang, Python, Node, Rust, ...) ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} Firefox (with screen share flags)   ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} Chromium (with GPU acceleration)    ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} VS Code                             ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} Development tools (GCC, Python, Node, Rust, ...) ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} PipeWire + WirePlumber (audio + screen capture) ${GREEN}✓${NC}"
+    echo -e "  ${CYAN}•${NC} Picom compositor (fixes screen sharing) ${GREEN}✓${NC}"
     echo ""
     echo -e "${WHITE}🚀 Commands:${NC}"
     echo -e "  ${GREEN}bash ~/start-desktop.sh${NC}  - Start XFCE desktop"
     echo -e "  ${GREEN}bash ~/stop-desktop.sh${NC}   - Stop desktop"
+    echo ""
+    echo -e "${YELLOW}⚠️  IMPORTANT for Discord screen sharing:${NC}"
+    echo -e "  1. Use ${WHITE}Firefox (Screen Share Fix)${NC} or ${WHITE}Chromium (Screen Share Fix)${NC}"
+    echo -e "  2. When sharing, choose ${WHITE}\"Entire Screen\"${NC} (not application window)"
+    echo -e "  3. If still not working, try: ${WHITE}sudo sysctl kernel.unprivileged_userns_clone=1${NC} (if rooted)"
     echo ""
 }
 
 # ============== MAIN ==============
 main() {
     print_banner
-    echo -e "${WHITE}This script will install a full Linux desktop with the apps above.${NC}"
-    echo -e "${GRAY}Estimated time: 15-20 minutes (depends on internet).${NC}\n"
+    echo -e "${WHITE}This script will install a full Linux desktop with screen share fixes.${NC}"
+    echo -e "${GRAY}Estimated time: 20-25 minutes (depends on internet).${NC}\n"
     check_storage
     echo ""
     echo -e "${YELLOW}Press ENTER to start or Ctrl+C to cancel...${NC}"
@@ -378,7 +448,9 @@ main() {
     step_x11
     step_desktop
     step_gpu
-    step_audio
+    step_audio        # Now PipeWire
+    step_compositor   # NEW: Picom
+    step_portals      # NEW: XDG portals
     step_browsers
     step_vscode
     step_dev_tools
